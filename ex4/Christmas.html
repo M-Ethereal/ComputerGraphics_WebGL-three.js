@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Merry Christmas</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style type="text/css">
+		body, html,#all {width: 100%;height: 100%;overflow: hidden;margin: 0;font-family: "微软雅黑";}
+		#header{background-color: black;color: white;text-align: center;padding:2px;}
+		#sp{width: 100%; background-color: #eeeeee;padding: 8px;text-align: center;}
+		#box{position:relative;width:100%;height:559px;}
+		.ctrl{position:absolute;left:50px;top:20px; width: 200px; height: 400px}
+		.notes{position:absolute;left:50px;top:335px; width: 300px; height: 100px}
+		#footer{background-color: black;color: white;text-align: center;padding:5px;position: absolute;width: 100%;bottom: 0;}
+		#video {position: absolute;width: 0;height: 0;}
+	</style>
+	<script src="../../Texture/texture.js"></script>
+</head>
+
+<body >
+<!--<video id="video" autoplay loop muted>-->
+<!--	<source src="textures/gif/christmas-main.gif">-->
+<!--</video>-->
+
+<div id="header">
+	<h1>完结撒花：圣诞特刊！</h1>
+</div>
+
+<div id="sp">
+	<button id="showA">显示坐标轴</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="hideA">隐藏坐标轴</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="cEn">聚焦宇航员</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="cDEn">聚焦原点</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="hideMesh">去掉网格球</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="showMesh">加上网格球</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="purple">紫光灯</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="yellow">黄光灯</button>
+	&nbsp;&nbsp;&nbsp;&nbsp;
+	<button id="green">绿光灯</button>
+</div>
+
+<div id="box">
+	<div class="notes">
+		<!--			快捷键说明:（物体坐标系）<br>-->
+		<!--			A-向左走/飞<br>-->
+		<!--			D-向右走/飞<br>-->
+		<!--			W-前进 S-后退<br>-->
+		<!--			Q-抬升<br>-->
+		<!--			E-下降<br>-->
+		<!--			P-落地<br>-->
+		光源位置调整：<br>
+		z轴方向  900 <input id="sliderZ" type="range" min="900" max="1100" step="10" value="1000" /> 1100
+		<br>
+		x轴方向 -400 <input id="sliderX" type="range" min="-400" max="400" step="10" value="0" /> 400
+		<br>
+		y轴方向 -200 <input id="sliderY" type="range" min="-200" max="200" step="10" value="0" /> 200
+
+
+	</div>
+
+	<div class="ctrl">
+		针对物体坐标系：<br>
+		<button id="turnLeft">水平转向-左（绕z轴）</button>
+		<button id="turnRight">水平转向-右（绕z轴）</button>
+		<button id="turnUp">垂直俯仰-上（绕x轴）</button>
+		<button id="turnDown">垂直俯仰-下（绕x轴）</button>
+		<button id="devLeft">侧向翻转-左（绕y轴）</button>
+		<button id="devRight">侧向翻转-右（绕y轴）</button>
+
+		<br>
+		针对世界坐标系：<br>
+		<button id="up">向上平移</button>
+		<button id="down">向下平移</button>
+		<button id="left">向左平移</button>
+		<button id="right">向右平移</button>
+		<button id="forward">向前平移</button>
+		<button id="backward">向后平移</button>
+
+		<button id="rotationX">绕x轴旋转</button>
+		<button id="rotationY">绕y轴旋转</button>
+		<button id="rotationZ">绕z轴旋转</button>
+
+		<button id="reset">还原初始位置</button>
+	</div>
+
+	<div id="container"></div>
+</div>
+
+<div id="footer">
+	@都去过圣诞了谁来写作业啊：周子易 刘晓臻 陈月瑶
+</div>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+
+				uniform float time;
+
+				uniform float fogDensity;
+				uniform vec3 fogColor;
+
+				uniform sampler2D texture1;
+				uniform sampler2D texture2;
+
+				varying vec2 vUv;
+
+				void main( void ) {
+
+					vec2 position = - 1.0 + 2.0 * vUv;
+
+					vec4 noise = texture2D( texture1, vUv );
+					vec2 T1 = vUv + vec2( 1.5, - 1.5 ) * time * 0.02;
+					vec2 T2 = vUv + vec2( - 0.5, 2.0 ) * time * 0.01;
+
+					T1.x += noise.x * 2.0;
+					T1.y += noise.y * 2.0;
+					T2.x -= noise.y * 0.2;
+					T2.y += noise.z * 0.2;
+
+					float p = texture2D( texture1, T1 * 2.0 ).a;
+
+					vec4 color = texture2D( texture2, T2 * 2.0 );
+					vec4 temp = color * ( vec4( p, p, p, p ) * 2.0 ) + ( color * color - 0.1 );
+
+					if( temp.r > 1.0 ) { temp.bg += clamp( temp.r - 2.0, 0.0, 100.0 ); }
+					if( temp.g > 1.0 ) { temp.rb += temp.g - 1.0; }
+					if( temp.b > 1.0 ) { temp.rg += temp.b - 1.0; }
+
+					gl_FragColor = temp;
+
+					float depth = gl_FragCoord.z / gl_FragCoord.w;
+					const float LOG2 = 1.442695;
+					float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );
+					fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );
+
+					gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );
+
+				}
+
+			</script>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+				uniform vec2 uvScale;
+				varying vec2 vUv;
+
+				void main()
+				{
+
+					vUv = uvScale * uv;
+					vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+					gl_Position = projectionMatrix * mvPosition;
+
+				}
+
+			</script>
+
+<script type="module">
+
+    import * as THREE from '../build/three.module.js';
+
+    import Stats from './jsm/libs/stats.module.js';
+
+    import { GUI } from './jsm/libs/dat.gui.module.js';
+    import { OrbitControls } from './jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+    import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
+    import { FBXLoader } from "./jsm/loaders/FBXLoader.js";
+    import { Sky } from './jsm/objects/Sky.js';
+    import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from './jsm/postprocessing/RenderPass.js';
+    import { FilmPass } from './jsm/postprocessing/FilmPass.js';
+    import { BloomPass } from './jsm/postprocessing/BloomPass.js';
+    import { TWEEN } from './jsm/libs/tween.module.min.js';
+
+    var scene, camera, pointLight, spotLight,stats;
+    var renderer, mixer, controls;
+    var sky, sunSphere;
+    var doughnutRender, doughnutComposer, doughnutUniforms, doughnut;
+    var ballRender, ballComposer, ballUniforms, ball;
+    var ground, groundComposer, groundUniforms, groundRender,groundSphere;
+
+    var pon,yon,gon;
+
+    var matFloor = new THREE.MeshPhongMaterial();
+    var matBox = new THREE.MeshPhongMaterial( { color: 0xaaaaaa } );
+    var geoFloor = new THREE.PlaneBufferGeometry( 2000, 2000 );
+    var geoBox = new THREE.BoxBufferGeometry( 3, 1, 2 );
+    var mshFloor = new THREE.Mesh( geoFloor, matFloor );
+    mshFloor.rotation.x = - Math.PI * 0.5;
+    var mshBox = new THREE.Mesh( geoBox, matBox );
+
+    var spotLight1 = createSpotlight( 0xFF7F00 );
+    var spotLight2 = createSpotlight( 0x00FF7F );
+    var spotLight3 = createSpotlight( 0x7F00FF );
+    var lightHelper1, lightHelper2, lightHelper3;
+
+    var stop = false;
+
+    var clock = new THREE.Clock();
+    var container = document.getElementById( 'container' );
+
+    stats = new Stats();
+    container.appendChild( stats.dom );
+
+    function initScene() {
+        scene = new THREE.Scene();
+        renderer = new THREE.WebGLRenderer( { alpha:true, antialias: true } );
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.shadowMap.enabled = true;//阴影效果
+
+        // renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        container.appendChild( renderer.domElement );
+        var helper = new THREE.AxesHelper(50);
+        //按键控制-坐标轴显示
+        document.getElementById("showA").onclick = function (event){
+            scene.add(helper);
+        };
+        document.getElementById("hideA").onclick = function (event){
+            scene.remove(helper);
+        };
+    }
+
+    function initCamera() {
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 1, 1000);
+        camera.position.set(5, 2, 8);
+        camera.lookAt(new THREE.Vector3(0,1,0));
+    }
+
+    function initControl(){
+        //control
+        controls = new OrbitControls( camera, renderer.domElement );
+        controls.target.set( 0, 0.5, 0 );
+        controls.enablePan = false;
+    }
+
+    /***************************new light*************************/
+    function createSpotlight( color ) {
+        var newObj = new THREE.SpotLight( color, 2 );
+        newObj.castShadow = true;
+        newObj.angle = 0.3;
+        newObj.penumbra = 0.2;
+        newObj.decay = 2;
+        newObj.distance = 50;
+        return newObj;
+    }
+
+    function initMoreLight(){
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        camera.position.set( 46, 22, - 21 );
+        spotLight1.position.set( 15, 40, 45 );
+        spotLight2.position.set( 0, 40, 35 );
+        spotLight3.position.set( - 15, 40, 45 );
+
+        lightHelper1 = new THREE.SpotLightHelper( spotLight1 );
+        lightHelper2 = new THREE.SpotLightHelper( spotLight2 );
+        lightHelper3 = new THREE.SpotLightHelper( spotLight3 );
+        scene.add( spotLight1, spotLight2, spotLight3 );
+        scene.add( lightHelper1, lightHelper2, lightHelper3 );
+
+        document.body.appendChild( renderer.domElement );
+        onResize();
+        window.addEventListener( 'resize', onResize, false );
+
+        // controls.target.set( 0, 7, 0 );
+        // controls.maxPolarAngle = Math.PI / 2;
+        // controls.update();
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
+
+    function tween( light ) {
+        new TWEEN.Tween( light ).to( {
+            angle: ( Math.random() * 0.7 ) + 0.1,
+            penumbra: Math.random() + 1
+        }, Math.random() * 3000 + 2000 )
+            .easing( TWEEN.Easing.Quadratic.Out ).start();
+
+        new TWEEN.Tween( light.position ).to( {
+            x: ( Math.random() * 30 ) - 15,
+            y: ( Math.random() * 10 ) + 15,
+            z: ( Math.random() * 30 ) - 15
+        }, Math.random() * 3000 + 2000 )
+            .easing( TWEEN.Easing.Quadratic.Out ).start();
+    }
+
+    function MoreLightAnimate() {
+        // requestAnimationFrame( MoreLightAnimate );
+        tween( spotLight1 );
+        tween( spotLight2 );
+        tween( spotLight3 );
+        setTimeout( MoreLightAnimate, 5000 );
+        // update();
+        MoreLightRender();
+
+    }
+
+    function MoreLightRender(){
+        TWEEN.update();
+        if ( lightHelper1 ) lightHelper1.update();
+        if ( lightHelper2 ) lightHelper2.update();
+        if ( lightHelper3 ) lightHelper3.update();
+
+        // renderer.render( scene, camera );
+        render();
+        // requestAnimationFrame( MoreLightRsender );
+    }
+    /***************************new light*************************/
+
+    var light;
+    function initLight() {
+        scene.add( new THREE.AmbientLight( 0x463b3b ) );
+
+        //光线
+        pointLight = new THREE.PointLight( 0xefdab6, 1.5, 5000 );
+        pointLight.position.set(0,0,1000);
+        scene.add( pointLight );
+
+        var test1spotLight = new THREE.SpotLight( 0x7F00FF, 2, 200) //紫
+        test1spotLight.position.set(5, 5, 5);
+        test1spotLight.castShadow = true;
+        // 光源的阴影设置
+        test1spotLight.shadow.mapSize.width = 512;  // default
+        test1spotLight.shadow.mapSize.height = 512; // default
+        test1spotLight.shadow.camera.near = 0.5;       // default
+        test1spotLight.shadow.camera.far = 500      // default
+        //按键控制
+        document.getElementById("purple").onclick = function (event){
+            if(pon==false) {
+                scene.add(test1spotLight);
+                pon=true;
+            }
+            else
+			{
+                scene.remove(test1spotLight);
+                pon=false;
+			}
+        };
+
+
+        var test2spotLight = new THREE.SpotLight( 0x00FF7F, 2, 200)//绿光
+        test2spotLight.position.set(-5, 5, 5);
+        test2spotLight.castShadow = true;
+        // 光源的阴影设置
+        test2spotLight.shadow.mapSize.width = 512;  // default
+        test2spotLight.shadow.mapSize.height = 512; // default
+        test2spotLight.shadow.camera.near = 0.5;       // default
+        test2spotLight.shadow.camera.far = 500      // default
+        //按键控制
+        document.getElementById("green").onclick = function (event){
+            if(gon==false) {
+                scene.add(test2spotLight);
+                gon=true;
+            }
+            else
+            {
+                scene.remove(test2spotLight);
+                gon=false;
+            }
+        };
+
+        var test3spotLight = new THREE.SpotLight( 0xFF7F00, 2, 200) // 黄光
+        test3spotLight.position.set(5, 5, -5);
+        test3spotLight.castShadow = true;
+        // 光源的阴影设置
+        test3spotLight.shadow.mapSize.width = 512;  // default
+        test3spotLight.shadow.mapSize.height = 512; // default
+        test3spotLight.shadow.camera.near = 0.5;       // default
+        test3spotLight.shadow.camera.far = 500      // default
+        //按键控制
+        document.getElementById("yellow").onclick = function (event){
+            if(yon==false) {
+                scene.add(test3spotLight);
+                yon=true;
+            }
+            else
+            {
+                scene.remove(test3spotLight);
+                yon=false;
+            }
+        };
+
+        // var helper = new THREE.CameraHelper(spotLight6.shadow.camera);
+        // scene.add(helper);
+
+        pointLight.castShadow = true;//阴影
+
+        document.getElementById("sliderX").onchange = function(event) {
+            pointLight.position.setX(event.target.value);
+        };
+        document.getElementById("sliderY").onchange = function(event) {
+            pointLight.position.setY(event.target.value);
+        };
+        document.getElementById("sliderZ").onchange = function(event) {
+            pointLight.position.setZ(event.target.value);
+        };
+    }
+
+    function initAstronaut() {
+        var dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath( 'js/libs/draco' );
+
+        var loader = new GLTFLoader();
+        loader.setDRACOLoader( dracoLoader );
+
+        loader.load( 'models/gltf/WalkingAstronaut.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 0, 0, 0 );
+            model.scale.set( 1, 1, 1 );
+
+            model.castShadow = true;
+            model.receiveShadow = true;
+
+            //按键控制-视点交互
+            document.getElementById("cEn").onclick = function (event){//聚焦宇航员
+                //camera.lookAt(new THREE.Vector3(5,0,3));
+                controls.target = model.position;
+            };
+            document.getElementById("cDEn").onclick = function (event){//回到原点
+                //camera.lookAt(new THREE.Vector3(10,10,10));
+                controls.target = new THREE.Vector3(0,0,0);
+            };
+
+            //按键控制-还原初始状态
+            document.getElementById("reset").onclick = function (event){
+                model.position.set( 0, 0, 0 );
+                model.rotation.set(0,0,0);
+                mixer.clipAction( gltf.animations[ 0 ] ).stop();
+                mixer.clipAction( gltf.animations[ 2 ] ).stop();
+                mixer.clipAction( gltf.animations[ 3 ] ).stop();
+                mixer.clipAction( gltf.animations[ 1 ] ).play();
+            };
+
+            //世界坐标系平移
+            document.getElementById("up").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.y +=0.1;
+                // model.translateY(0.1);
+            };
+            document.getElementById("down").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.y -=0.1;
+                //model.translateY(-0.1);
+            };
+            document.getElementById("left").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.x +=0.1;
+                //model.translateX(0.1);
+            };
+            document.getElementById("right").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.x -=0.1;
+                //model.translateX(-0.1);
+            };
+            document.getElementById("forward").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.z +=0.1;
+                //model.translateZ(0.1);
+            };
+            document.getElementById("backward").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);
+                model.translateOnAxis(axis,0.01);
+                model.position.z -=0.1;
+                //model.translateZ(-0.1);
+            };
+
+            document.getElementById("turnLeft").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.y +=0.1;
+            };
+            document.getElementById("turnRight").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.y -=0.1;
+            };
+            document.getElementById("turnUp").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.x +=0.1;
+            };
+            document.getElementById("turnDown").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.x -=0.1;
+            };
+            document.getElementById("devLeft").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.z -=0.1;
+            };
+            document.getElementById("devRight").onclick = function (event){
+                var axis = new THREE.Vector3(0,0,1);
+                model.translateOnAxis(axis,0.01);
+                model.rotation.z +=0.1;
+            };
+
+
+            document.getElementById("rotationX").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);//x轴
+                model.rotateOnAxis(axis,Math.PI/16);//绕x轴旋转π/16
+            };
+            document.getElementById("rotationY").onclick = function (event){
+                var axis = new THREE.Vector3(0,1,0);//y轴
+                model.rotateOnAxis(axis,Math.PI/16);//绕y轴旋转π/16
+            };
+            document.getElementById("rotationZ").onclick = function (event) {
+                var axis = new THREE.Vector3(0, 0, 1);//z轴
+                model.rotateOnAxis(axis, Math.PI / 16);//绕z轴旋转π/16
+            };
+
+            scene.add( model );
+
+            mixer = new THREE.AnimationMixer( model );
+            mixer.clipAction( gltf.animations[ 1 ] ).play();//stand
+
+            //键盘控制
+            window.onkeydown = function( event ) {
+
+                var key = String.fromCharCode(event.keyCode);
+                switch( key ) {
+                    case 'P'://落地
+                        model.position.setY(0);
+                        model.rotation.set(0,0,0);
+                        mixer.clipAction( gltf.animations[ 0 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 2 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 3 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 1 ] ).play();
+                        break;
+
+                    case 'Q'://上
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,0.1);
+                        model.rotation.x -= 0.05;
+                        mixer.clipAction( gltf.animations[ 1 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 3 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 0 ] ).play();
+                        break;
+
+                    case 'E'://下
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,0.1);
+                        model.rotation.x += 0.05;
+                        mixer.clipAction( gltf.animations[ 1 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 3 ] ).stop();
+                        mixer.clipAction( gltf.animations[ 0 ] ).play();
+                        break;
+
+                    case 'W'://前
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,0.1);
+                        mixer.clipAction( gltf.animations[ 3 ] ).play();
+                        break;
+
+                    case 'S'://后
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,-0.1);
+                        mixer.clipAction( gltf.animations[ 3 ] ).play();
+                        break;
+
+                    case 'D'://右
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,0.01);
+                        model.rotation.y -= 0.1;
+                        mixer.clipAction( gltf.animations[ 3 ] ).play();
+                        break;
+
+                    case 'A'://左
+                        var axis = new THREE.Vector3(0,0,1);
+                        model.translateOnAxis(axis,0.01);
+                        model.rotation.y += 0.1;
+                        mixer.clipAction( gltf.animations[ 3 ] ).play();
+                        break;
+                }
+            };
+
+            astronautAnimate();
+
+        }, undefined, function ( e ) {
+
+            console.error( e );
+
+        } );
+    }
+
+    function initSky() {
+
+        // Add Sky
+        sky = new Sky();
+        sky.scale.setScalar( 450000 );
+        scene.add( sky );
+
+        // Add Sun Helper
+        sunSphere = new THREE.Mesh(
+            new THREE.SphereBufferGeometry( 20000, 16, 8 ),
+            new THREE.MeshBasicMaterial( { color: 0xe0ffff } )//也可以白光，全f
+        );
+        sunSphere.position.y = - 700000;
+        sunSphere.visible = false;
+        scene.add( sunSphere );
+
+        /// GUI
+
+        var effectController = {
+            turbidity: 10,
+            rayleigh: 2,
+            mieCoefficient: 0.005,
+            mieDirectionalG: 0.8,
+            luminance: 1,
+            inclination: 0.49, // elevation / inclination
+            azimuth: 0.75, // Facing front,
+            sun: true
+        };
+
+        var distance = 400000;
+
+        function guiChanged() {
+
+            var uniforms = sky.material.uniforms;
+            uniforms[ "turbidity" ].value = effectController.turbidity;
+            uniforms[ "rayleigh" ].value = effectController.rayleigh;
+            uniforms[ "mieCoefficient" ].value = effectController.mieCoefficient;
+            uniforms[ "mieDirectionalG" ].value = effectController.mieDirectionalG;
+            uniforms[ "luminance" ].value = effectController.luminance;
+
+            var theta = Math.PI * ( effectController.inclination - 0.5 );
+            var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+
+            sunSphere.position.x = distance * Math.cos( phi );
+            sunSphere.position.y = distance * Math.sin( phi ) * Math.sin( theta );
+            sunSphere.position.z = distance * Math.sin( phi ) * Math.cos( theta );
+
+            sunSphere.visible = effectController.sun;
+
+            uniforms[ "sunPosition" ].value.copy( sunSphere.position );
+
+            renderer.render( scene, camera );
+
+        }
+
+        var gui = new GUI();
+
+        gui.add( effectController, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
+        gui.add( effectController, "rayleigh", 0.0, 4, 0.001 ).onChange( guiChanged );
+        gui.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange( guiChanged );
+        gui.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged );
+        gui.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
+        gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
+        gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged );
+        gui.add( effectController, "sun" ).onChange( guiChanged );
+
+        guiChanged();
+
+    }
+
+    function initGround() {
+        var texture1 = new THREE.TextureLoader().load( 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg' );
+        var texture2 = new THREE.TextureLoader().load( 'textures/floors/FloorsCheckerboard_S_Normal.jpg' );
+        texture1.wrapS = texture1.wrapT = THREE.RepeatWrapping;
+        texture1.repeat.set(35, 35);
+        texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
+        texture2.repeat.set(35, 35);
+        var material = new THREE.MeshLambertMaterial({map:texture1},{bumpMap:texture2});//转换对光源有渲染的材质，地面颜色
+
+		ground = new THREE.Mesh( new THREE.PlaneBufferGeometry(200, 200), material );
+        ground.rotation.set(Math.PI / -2, 0, 0);
+        ground.receiveShadow = true;
+        scene.add(ground);
+    }
+
+    function initOtherModels() {
+        var dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath( 'js/libs/draco' );
+
+        var loader = new GLTFLoader();
+        loader.setDRACOLoader( dracoLoader );
+
+        loader.load( 'models/gltf/CrashedUFO.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 8, -1, -8 );
+            model.scale.set( 0.8, 0.8, 0.8 );
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/Mars Curiosity Rover.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 5, 0, 3 );
+            model.scale.set( 1, 1, 1 );
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        //圣诞树
+        loader.load( 'models/gltf/DecoratedChristmasTree.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 0, 0, 40 );
+            model.scale.set( 120, 100, 120 );
+            model.rotation.set(0 , 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+
+        //建筑
+        loader.load( 'models/gltf/SnowyVillage.glb', function ( gltf ) {//右
+
+            var model = gltf.scene;
+
+            model.position.set( -30, 0, 15 );
+            model.scale.set( 0.4, 0.4, 0.4 );
+            model.rotation.set(0 , Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/SnowyVillage.glb', function ( gltf ) {//左
+
+            var model = gltf.scene;
+
+            model.position.set( 30, 0, 45 );
+            model.scale.set( 0.4, 0.4, 0.4 );
+            model.rotation.set(0 , -Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/CityApartmentBuilding1.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 20, 0, 0 );
+            model.scale.set( 220, 220, 220 );
+            model.rotation.set(0 , -Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/CityApartmentBuilding2.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 20, 0, 50 );
+            model.scale.set( 220, 220, 220 );
+            model.rotation.set(0 , -Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/CityBrownstoneBuilding.glb', function ( gltf ) {//左
+
+            var model = gltf.scene;
+
+            model.position.set( 20, 0, 30 );
+            model.scale.set( 220, 220, 220 );
+            model.rotation.set(0 , -Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/CityBlock.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 0, 14, -40 );
+            model.scale.set( 0.03, 0.03, 0.03 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/Small City Building 1.glb', function ( gltf ) {//左
+
+            var model = gltf.scene;
+
+            model.position.set( 30, 0, 22 );
+            model.scale.set( 1, 1, 1 );
+            model.rotation.set(0, Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/Small City Building 2.glb', function ( gltf ) {//右
+
+            var model = gltf.scene;
+
+            model.position.set( -30, 0, -10 );
+            model.scale.set( 180, 180, 180 );
+            model.rotation.set(0, Math.PI/2 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/ads.glb', function ( gltf ) {//广告牌
+
+            var model = gltf.scene;
+
+            model.position.set( -20, 0, 40 );
+            model.scale.set( 70, 80, 70 );
+            model.rotation.set(0, Math.PI*2/3 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        //礼物盒子
+        loader.load( 'models/gltf/gift1.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( -2, 0, -3 );
+            model.scale.set( 5, 5, 5 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/gift2.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( -1, 0, 2 );
+            model.scale.set( 5, 5, 5 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        //圣诞袜子
+        loader.load( 'models/gltf/ChristmasStocking.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 3.1, 3, -7 );
+            model.scale.set( 10, 10, 10 );
+            model.rotation.set(0, Math.PI ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        //彩灯
+        loader.load( 'models/gltf/Holiday lights.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 4, 3, -5 );
+            model.scale.set( 10, 10, 10 );
+            model.rotation.set(0, Math.PI*2/3 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+		//树
+        loader.load( 'models/gltf/Snowy Pine Tree.glb', function ( gltf ) {//好看松1
+
+            var model = gltf.scene;
+
+            model.position.set( -25, 0, -3.5 );
+            model.scale.set( 5, 5, 5 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Snowy Pine Tree.glb', function ( gltf ) {//好看松2
+
+            var model = gltf.scene;
+
+            model.position.set( -25, 0, -17 );
+            model.scale.set( 8, 10, 8 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Snowy Pine Tree.glb', function ( gltf ) {//好看松3
+
+            var model = gltf.scene;
+
+            model.position.set( 25, 0, 27 );
+            model.scale.set( 8, 10, 8 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Snowy Pine Tree.glb', function ( gltf ) {//好看松4
+
+            var model = gltf.scene;
+
+            model.position.set( 25, 0, 65 );
+            model.scale.set( 8, 10, 8 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        loader.load( 'models/gltf/Foliage Pine Tree Snow.glb', function ( gltf ) {//坨坨松1
+
+            var model = gltf.scene;
+
+            model.position.set( -27, 0, 2 );
+            model.scale.set( 1, 0.3, 1 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Foliage Pine Tree Snow.glb', function ( gltf ) {//坨坨松2
+
+            var model = gltf.scene;
+
+            model.position.set( 26, 0, 20 );
+            model.scale.set( 1, 0.3, 1 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+		//路灯
+        loader.load( 'models/gltf/Street Light1.glb', function ( gltf ) {//左路灯
+
+            var model = gltf.scene;
+
+            model.position.set( 25, 0, 8 );
+            model.scale.set( 100, 100, 100 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Street Light1.glb', function ( gltf ) {//左路灯
+
+            var model = gltf.scene;
+
+            model.position.set( 25, 0, 30 );
+            model.scale.set( 100, 100, 100 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+
+        loader.load( 'models/gltf/Street Light3.glb', function ( gltf ) {//右路灯
+
+            var model = gltf.scene;
+
+            model.position.set( -25, 0, 0 );
+            model.scale.set( 100, 100, 100 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+        loader.load( 'models/gltf/Street Light3.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( -25, 0, -20 );
+            model.scale.set( 100, 100, 100 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+		//蜡烛
+        loader.load( 'models/gltf/Red Christmas Candles.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 5, 0, -5 );
+            model.scale.set( 2, 2, 2 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        // //探照灯
+        // loader.load( 'models/gltf/Mesa Fog Lights.glb', function ( gltf ) {//紫色
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( 5, 5, 5);
+        //     model.scale.set( 6, 6, 6 );
+        //     model.rotation.set(0, Math.PI*2/3 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+        // loader.load( 'models/gltf/Mesa Fog Lights.glb', function ( gltf ) {
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( -5, 5, 5);
+        //     model.scale.set( 6, 6, 6 );
+        //     model.rotation.set(0, -Math.PI*2/3 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+        // loader.load( 'models/gltf/Mesa Fog Lights.glb', function ( gltf ) {//绿色
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( 5, 5, -5);
+        //     model.scale.set( 6, 6, 6 );
+        //     model.rotation.set(0, -Math.PI*2/3 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+
+
+        //神必星星
+        loader.load( 'models/gltf/Star Decoration.glb', function ( gltf ) {
+
+            var model = gltf.scene;
+
+            model.position.set( 0, 3, 10);
+            model.scale.set( 15, 15, 15 );
+            model.rotation.set(0, 0 ,0);
+
+            scene.add( model );
+        }, undefined, function ( e ) {
+            console.error( e );
+        } );
+
+        // //居民
+        // loader.load( 'models/gltf/Standing Alien.glb', function ( gltf ) {
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( 3, 0, 35 );
+        //     model.scale.set( 1, 1, 1 );
+        //     model.rotation.set(0, 0 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+        // loader.load( 'models/gltf/Walking Alien.glb', function ( gltf ) {
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( 5, 0, 20 );
+        //     model.scale.set( 1, 1, 1 );
+        //     model.rotation.set(0, 0 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+        // loader.load( 'models/gltf/Dancing Alien0.glb', function ( gltf ) {
+		//
+        //     var model = gltf.scene;
+		//
+        //     model.position.set( -12, 0, 7 );
+        //     model.scale.set( 1, 1, 1 );
+        //     model.rotation.set(0, 0 ,0);
+		//
+        //     scene.add( model );
+        // }, undefined, function ( e ) {
+        //     console.error( e );
+        // } );
+    }
+
+    function initAds() {
+        //在大屏幕上加载动画
+        var planeGeometry = new THREE.PlaneGeometry(20, 10);
+        var texture = new THREE.TextureLoader().load( 'textures/gif/christmas-main.gif' );
+		var material = new THREE.MeshLambertMaterial({map:texture});//转换对光源有渲染的材质，地面颜色
+        material.map.needsUpdate = true;
+        var ad = new THREE.Mesh(planeGeometry, material);
+        ad.position.set(-19,10,39);
+        ad.rotation.set(0, Math.PI*2/3, 0);
+
+        scene.add( ad );
+	}
+
+	function myMesh() {
+        var sphereGeometry = new THREE.SphereBufferGeometry( 2, 8, 8 );
+        var sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xcccccc, wireframe: true, transparent: true, opacity: 0.3 } );
+        var sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+        sphere.position.set(0,3,10);
+        sphere.scale.set( 0.3, 0.3, 0.3 );
+        scene.add( sphere );
+
+        //按键控制
+        document.getElementById("hideMesh").onclick = function (event){//去掉球
+            scene.remove(sphere);
+        };
+        document.getElementById("showMesh").onclick = function (event){//加上球
+            scene.add(sphere);
+        };
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        render();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
+
+    function astronautAnimate(){
+        requestAnimationFrame( astronautAnimate );
+        update();
+        render();
+    }
+
+    function update() {
+        var delta = 1 * clock.getDelta();
+        mixer.update( delta );
+        controls.update( delta );
+        stats.update();
+    }
+
+    function render() {
+        renderer.render( scene, camera );
+        renderer.shadowMap.enabled = true;
+    }
+
+    function draw() {
+        initScene();
+        initCamera();
+        initSky();
+        initLight();
+        initControl();
+        initGround();
+        initOtherModels();
+        initAds();
+        myMesh();
+        initAstronaut();
+        astronautAnimate();
+        window.onresize = onWindowResize;
+    }
+
+    draw();
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<title>Dragon</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style type="text/css">
+			body, html,#all {width: 100%;height: 100%;overflow: hidden;margin: 0;font-family: "微软雅黑";}
+			#header{background-color: black;color: white;text-align: center;padding:2px;}
+			#sp{width: 100%; background-color: #eeeeee;padding: 8px;text-align: center;}
+			#box{position:relative;width:100%;height:559px;}
+			.ctrl{position:absolute;left:50px;top:20px; width: 200px; height: 400px}
+			.notes{position:absolute;left:50px;top:335px; width: 200px; height: 100px}
+			#footer{background-color: black;color: white;text-align: center;padding:5px;position: absolute;width: 100%;bottom: 0;}
+		</style>
+	</head>
+
+	<body >
+
+	<div id="header">
+		<h1>JoJo！我们不做蜜蜂啦！</h1>
+	</div>
+
+	<div id="sp">
+		<button id="showA">显示坐标轴</button>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<button id="hideA">隐藏坐标轴</button>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<button id="cEn">解锁镜头位置</button>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<button id="cDEn">锁定镜头位置</button>
+	</div>
+
+	<div id="box">
+		<div class="notes">
+			快捷键说明:（物体坐标系）<br>
+			A-向左走/飞<br>
+			D-向右走/飞<br>
+			W-前进 S-后退<br>
+			Q-抬升<br>
+			E-下降<br>
+			P-落地<br>
+		</div>
+
+		<div class="ctrl">
+			针对物体坐标系：<br>
+			<button id="turnLeft">水平转向-左（绕z轴）</button>
+			<button id="turnRight">水平转向-右（绕z轴）</button>
+			<button id="turnUp">垂直俯仰-上（绕x轴）</button>
+			<button id="turnDown">垂直俯仰-下（绕x轴）</button>
+			<button id="devLeft">侧向翻转-左（绕y轴）</button>
+			<button id="devRight">侧向翻转-右（绕y轴）</button>
+
+			<br>
+			针对世界坐标系：<br>
+			<button id="up">向上平移</button>
+			<button id="down">向下平移</button>
+			<button id="left">向左平移</button>
+			<button id="right">向右平移</button>
+			<button id="forward">向前平移</button>
+			<button id="backward">向后平移</button>
+
+			<button id="rotationX">绕x轴旋转</button>
+			<button id="rotationY">绕y轴旋转</button>
+			<button id="rotationZ">绕z轴旋转</button>
+
+			<button id="reset">还原初始位置</button>
+		</div>
+
+		<div id="container"></div>
+	</div>
+
+	<div id="footer">
+		@魔龙LoveLove后援会：周子易 刘晓臻 陈月瑶
+	</div>
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+
+				uniform float time;
+
+				uniform float fogDensity;
+				uniform vec3 fogColor;
+
+				uniform sampler2D texture1;
+				uniform sampler2D texture2;
+
+				varying vec2 vUv;
+
+				void main( void ) {
+
+					vec2 position = - 1.0 + 2.0 * vUv;
+
+					vec4 noise = texture2D( texture1, vUv );
+					vec2 T1 = vUv + vec2( 1.5, - 1.5 ) * time * 0.02;
+					vec2 T2 = vUv + vec2( - 0.5, 2.0 ) * time * 0.01;
+
+					T1.x += noise.x * 2.0;
+					T1.y += noise.y * 2.0;
+					T2.x -= noise.y * 0.2;
+					T2.y += noise.z * 0.2;
+
+					float p = texture2D( texture1, T1 * 2.0 ).a;
+
+					vec4 color = texture2D( texture2, T2 * 2.0 );
+					vec4 temp = color * ( vec4( p, p, p, p ) * 2.0 ) + ( color * color - 0.1 );
+
+					if( temp.r > 1.0 ) { temp.bg += clamp( temp.r - 2.0, 0.0, 100.0 ); }
+					if( temp.g > 1.0 ) { temp.rb += temp.g - 1.0; }
+					if( temp.b > 1.0 ) { temp.rg += temp.b - 1.0; }
+
+					gl_FragColor = temp;
+
+					float depth = gl_FragCoord.z / gl_FragCoord.w;
+					const float LOG2 = 1.442695;
+					float fogFactor = exp2( - fogDensity * fogDensity * depth * depth * LOG2 );
+					fogFactor = 1.0 - clamp( fogFactor, 0.0, 1.0 );
+
+					gl_FragColor = mix( gl_FragColor, vec4( fogColor, gl_FragColor.w ), fogFactor );
+
+				}
+
+			</script>
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+
+				uniform vec2 uvScale;
+				varying vec2 vUv;
+
+				void main()
+				{
+
+					vUv = uvScale * uv;
+					vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+					gl_Position = projectionMatrix * mvPosition;
+
+				}
+
+			</script>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import Stats from './jsm/libs/stats.module.js';
+
+            import { GUI } from './jsm/libs/dat.gui.module.js';
+            import { OrbitControls } from './jsm/controls/OrbitControls.js';
+            import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+            import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
+            import { FBXLoader } from "./jsm/loaders/FBXLoader.js";
+            import { Sky } from './jsm/objects/Sky.js';
+            import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
+            import { RenderPass } from './jsm/postprocessing/RenderPass.js';
+            import { FilmPass } from './jsm/postprocessing/FilmPass.js';
+            import { BloomPass } from './jsm/postprocessing/BloomPass.js';
+
+			var scene, camera, pointLight, stats;
+			var renderer, mixer, controls;
+            var sky, sunSphere;
+            var doughnutRender, doughnutComposer, doughnutUniforms, doughnut;
+            var ballRender, ballComposer, ballUniforms, ball;
+            var ground, groundComposer, groundUniforms, groundRender;
+
+			var stop = false;
+
+			var clock = new THREE.Clock();
+			var container = document.getElementById( 'container' );
+
+			stats = new Stats();
+			container.appendChild( stats.dom );
+
+			function initScene() {
+				scene = new THREE.Scene();
+				renderer = new THREE.WebGLRenderer( { alpha:true, antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.shadowMap.enabled = true;//阴影效果
+				container.appendChild( renderer.domElement );
+				var helper = new THREE.AxesHelper(50);
+				//按键控制-坐标轴显示
+				document.getElementById("showA").onclick = function (event){
+					scene.add(helper);
+				};
+				document.getElementById("hideA").onclick = function (event){
+					scene.remove(helper);
+				};
+			}
+
+			function initCamera() {
+				camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 1, 100);
+				camera.position.set(5, 2, 8);
+				camera.lookAt(new THREE.Vector3(0,0,0));
+			}
+
+			function initControl(){
+				//control
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.target.set( 0, 0.5, 0 );
+				controls.enablePan = false;
+				//按键控制-锁定交互
+				document.getElementById("cEn").onclick = function (event){
+				   controls.enabled = true;
+				};
+				document.getElementById("cDEn").onclick = function (event){
+				   controls.enabled = false;
+				};
+			}
+
+            var light;
+			function initLight() {
+				scene.add( new THREE.AmbientLight( 0x404040 ) );
+
+				//光线
+				pointLight = new THREE.PointLight( 0xffffff, 1 );
+				scene.add( pointLight );
+				pointLight.position.copy( camera.position );
+			}
+
+			function initDragon() {
+				var dracoLoader = new DRACOLoader();
+				dracoLoader.setDecoderPath( 'js/libs/draco' );
+
+				var loader = new GLTFLoader();
+				loader.setDRACOLoader( dracoLoader );
+
+				loader.load( 'models/gltf/Dragon.glb', function ( gltf ) {
+
+					var model = gltf.scene;
+
+					model.position.set( 0, 0, 0 );
+					model.scale.set( 10, 10, 10 );
+
+					//按键控制-还原初始状态
+					document.getElementById("reset").onclick = function (event){
+						model.position.set( 0, 0, 0 );
+						model.rotation.set(0,0,0);
+						mixer.clipAction( gltf.animations[ 1 ] ).stop();
+						mixer.clipAction( gltf.animations[ 2 ] ).stop();
+						mixer.clipAction( gltf.animations[ 0 ] ).play();
+					};
+
+					//世界坐标系平移
+					document.getElementById("up").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.y +=0.1;
+						// model.translateY(0.1);
+					};
+					document.getElementById("down").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.y -=0.1;
+						//model.translateY(-0.1);
+					};
+					document.getElementById("left").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.x +=0.1;
+						//model.translateX(0.1);
+					};
+					document.getElementById("right").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.x -=0.1;
+						//model.translateX(-0.1);
+					};
+					document.getElementById("forward").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.z +=0.1;
+						//model.translateZ(0.1);
+					};
+					document.getElementById("backward").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);
+						model.translateOnAxis(axis,0.01);
+						model.position.z -=0.1;
+						//model.translateZ(-0.1);
+					};
+
+					document.getElementById("turnLeft").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.y +=0.1;
+					};
+					document.getElementById("turnRight").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.y -=0.1;
+					};
+					document.getElementById("turnUp").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.x +=0.1;
+					};
+					document.getElementById("turnDown").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.x -=0.1;
+					};
+					document.getElementById("devLeft").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.z -=0.1;
+					};
+					document.getElementById("devRight").onclick = function (event){
+						var axis = new THREE.Vector3(0,0,1);
+						model.translateOnAxis(axis,0.01);
+						model.rotation.z +=0.1;
+					};
+
+
+					document.getElementById("rotationX").onclick = function (event){
+						var axis = new THREE.Vector3(1,0,0);//x轴
+						model.rotateOnAxis(axis,Math.PI/16);//绕x轴旋转π/16
+					};
+					document.getElementById("rotationY").onclick = function (event){
+						var axis = new THREE.Vector3(0,1,0);//y轴
+						model.rotateOnAxis(axis,Math.PI/16);//绕y轴旋转π/16
+					};
+					document.getElementById("rotationZ").onclick = function (event) {
+						var axis = new THREE.Vector3(0, 0, 1);//z轴
+						model.rotateOnAxis(axis, Math.PI / 16);//绕z轴旋转π/16
+					};
+
+					scene.add( model );
+
+					mixer = new THREE.AnimationMixer( model );
+					mixer.clipAction( gltf.animations[ 0 ] ).play();
+
+					//键盘控制
+					window.onkeydown = function( event ) {
+
+						var key = String.fromCharCode(event.keyCode);
+						switch( key ) {
+							case 'P'://落地
+								model.position.setY(0);
+								model.rotation.set(0,0,0);
+								mixer.clipAction( gltf.animations[ 1 ] ).stop();
+								mixer.clipAction( gltf.animations[ 2 ] ).stop();
+								mixer.clipAction( gltf.animations[ 0 ] ).play();
+								break;
+
+							case 'Q'://上
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,0.1);
+								model.rotation.x -= 0.05;
+								mixer.clipAction( gltf.animations[ 2 ] ).play();
+								break;
+
+							case 'E'://下
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,0.1);
+								model.rotation.x += 0.05;
+								mixer.clipAction( gltf.animations[ 2 ] ).play();
+								break;
+
+							case 'W'://前
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,0.1);
+								mixer.clipAction( gltf.animations[ 1 ] ).play();
+								break;
+
+							case 'S'://后
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,-0.1);
+								mixer.clipAction( gltf.animations[ 1 ] ).play();
+								break;
+
+							case 'D'://右
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,0.01);
+								model.rotation.y -= 0.1;
+								mixer.clipAction( gltf.animations[ 1 ] ).play();
+								break;
+
+							case 'A'://左
+								var axis = new THREE.Vector3(0,0,1);
+								model.translateOnAxis(axis,0.01);
+								model.rotation.y += 0.1;
+								mixer.clipAction( gltf.animations[ 1 ] ).play();
+								break;
+						}
+					};
+
+					dragonAnimate();
+
+				}, undefined, function ( e ) {
+
+					console.error( e );
+
+				} );
+			}
+
+			function initSky() {
+
+			// Add Sky
+			sky = new Sky();
+			sky.scale.setScalar( 450000 );
+			scene.add( sky );
+
+			// Add Sun Helper
+			sunSphere = new THREE.Mesh(
+				new THREE.SphereBufferGeometry( 20000, 16, 8 ),
+				new THREE.MeshBasicMaterial( { color: 0xffffff } )
+			);
+			sunSphere.position.y = - 700000;
+			sunSphere.visible = false;
+			scene.add( sunSphere );
+
+			/// GUI
+
+			var effectController = {
+				turbidity: 10,
+				rayleigh: 2,
+				mieCoefficient: 0.005,
+				mieDirectionalG: 0.8,
+				luminance: 1,
+				inclination: 0.49, // elevation / inclination
+				azimuth: 0.25, // Facing front,
+				sun: ! true
+			};
+
+			var distance = 400000;
+
+			function guiChanged() {
+
+				var uniforms = sky.material.uniforms;
+				uniforms[ "turbidity" ].value = effectController.turbidity;
+				uniforms[ "rayleigh" ].value = effectController.rayleigh;
+				uniforms[ "mieCoefficient" ].value = effectController.mieCoefficient;
+				uniforms[ "mieDirectionalG" ].value = effectController.mieDirectionalG;
+				uniforms[ "luminance" ].value = effectController.luminance;
+
+				var theta = Math.PI * ( effectController.inclination - 0.5 );
+				var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+
+				sunSphere.position.x = distance * Math.cos( phi );
+				sunSphere.position.y = distance * Math.sin( phi ) * Math.sin( theta );
+				sunSphere.position.z = distance * Math.sin( phi ) * Math.cos( theta );
+
+				sunSphere.visible = effectController.sun;
+
+				uniforms[ "sunPosition" ].value.copy( sunSphere.position );
+
+				renderer.render( scene, camera );
+
+			}
+
+			var gui = new GUI();
+
+			gui.add( effectController, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
+			gui.add( effectController, "rayleigh", 0.0, 4, 0.001 ).onChange( guiChanged );
+			gui.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange( guiChanged );
+			gui.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged );
+			gui.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
+			gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
+			gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged );
+			gui.add( effectController, "sun" ).onChange( guiChanged );
+
+			guiChanged();
+
+			}
+
+			function initDoughnut() {
+
+			var textureLoader = new THREE.TextureLoader();
+
+			doughnutUniforms = {
+
+				"time": { value: 1.0 },
+				"uvScale": { value: new THREE.Vector2( 3.0, 1.0 ) },
+				"texture1": { value: textureLoader.load( 'textures/lava/cloud.png' ) },
+				"texture2": { value: textureLoader.load( 'textures/lava/lavatile.jpg' ) }
+
+			};
+
+			doughnutUniforms[ "texture1" ].value.wrapS = doughnutUniforms[ "texture1" ].value.wrapT = THREE.RepeatWrapping;
+			doughnutUniforms[ "texture2" ].value.wrapS = doughnutUniforms[ "texture2" ].value.wrapT = THREE.RepeatWrapping;
+
+			var size = 0.65;
+
+			var material = new THREE.ShaderMaterial( {
+
+				uniforms: doughnutUniforms,
+				vertexShader: document.getElementById( 'vertexShader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+
+			} );
+
+			doughnut = new THREE.Mesh( new THREE.TorusBufferGeometry( size, 0.3, 30, 30 ), material );
+
+			// for ( var i = 0; i < 3; i ++ ) {
+			// 	var dou = doughnut.clone();
+			// 	dou.scale.setScalar(Math.abs(1-i)*(-15) + 30);
+			// 	dou.position.x = (1-i)*40;
+			// 	dou.position.y = 5;
+			// 	dou.position.z = Math.random()*50 + 40;
+			// 	scene.add( dou );
+			// }
+                var dou1 = doughnut.clone();
+                dou1.scale.set(20,20,20);
+                dou1.position.set(-90,10,50);
+                dou1.rotation.set(0,0.3,0.5);
+                scene.add( dou1 );
+
+                var dou2 = doughnut.clone();
+                dou2.scale.set(50,50,50);
+                dou2.position.set(5,-5,70);
+                scene.add( dou2 );
+
+                var dou3 = doughnut.clone();
+                dou3.scale.set(40,40,40);
+                dou3.position.set(100,15,40);
+                dou3.rotation.set(0,0.6,0);
+                scene.add( dou3 );
+
+			//
+
+			doughnutRender = new THREE.WebGLRenderer( { antialias: true } );
+			doughnutRender.setPixelRatio( window.devicePixelRatio );
+			container.appendChild( doughnutRender.domElement );
+			doughnutRender.autoClear = false;
+
+
+			//
+
+			var renderModel = new RenderPass( scene, camera );
+			var effectBloom = new BloomPass( 1.25 );
+			var effectFilm = new FilmPass( 0.35, 0.95, 2048, false );
+
+			doughnutComposer = new EffectComposer( doughnutRender );
+
+			doughnutComposer.addPass( renderModel );
+			doughnutComposer.addPass( effectBloom );
+			doughnutComposer.addPass( effectFilm );
+
+			//
+
+			}
+
+			function initBall() {
+
+			var textureLoader = new THREE.TextureLoader();
+
+			ballUniforms = {
+
+				"time": { value: 1.0 },
+				"uvScale": { value: new THREE.Vector2( 3.0, 1.0 ) },
+				"texture1": { value: textureLoader.load( 'textures/lava/cloud.png' ) },
+				"texture2": { value: textureLoader.load( 'textures/lava/lavatile.jpg' ) }
+
+			};
+
+			ballUniforms[ "texture1" ].value.wrapS = ballUniforms[ "texture1" ].value.wrapT = THREE.RepeatWrapping;
+			ballUniforms[ "texture2" ].value.wrapS = ballUniforms[ "texture2" ].value.wrapT = THREE.RepeatWrapping;
+
+			var size = 0.65;
+
+			var material = new THREE.ShaderMaterial( {
+
+				uniforms: ballUniforms,
+				vertexShader: document.getElementById( 'vertexShader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+
+			} );
+
+			ball = new THREE.Mesh( new THREE.SphereBufferGeometry(size,32,32), material );
+
+			for ( var i = 0; i < 3; i ++ ) {
+				var dou = ball.clone();
+				dou.scale.setScalar(Math.abs(1-i)*(-15) + 30);
+				dou.position.x = (1-i)*70;
+				dou.position.y = (14-i*7)*2;
+				dou.position.z = -( Math.random()*50 + 40);
+				scene.add( dou );
+			}
+
+			//
+
+			ballRender = new THREE.WebGLRenderer( { antialias: true } );
+			ballRender.setPixelRatio( window.devicePixelRatio );
+			container.appendChild( ballRender.domElement );
+			ballRender.autoClear = false;
+
+
+			//
+
+			var renderModel = new RenderPass( scene, camera );
+			var effectBloom = new BloomPass( 1.25 );
+			var effectFilm = new FilmPass( 0.35, 0.95, 2048, false );
+
+			ballComposer = new EffectComposer( ballRender );
+
+			ballComposer.addPass( renderModel );
+			ballComposer.addPass( effectBloom );
+			ballComposer.addPass( effectFilm );
+
+			//
+
+			}
+
+			function initGround() {
+			var textureLoader = new THREE.TextureLoader();
+
+			groundUniforms = {
+
+				"time": { value: 1.0 },
+				"uvScale": { value: new THREE.Vector2( 3.0, 1.0 ) },
+				"texture1": { value: textureLoader.load( 'textures/lava/cloud.png' ) },
+				"texture2": { value: textureLoader.load( 'textures/ground/dry.jpg' ) }
+
+			};
+
+			groundUniforms[ "texture1" ].value.wrapS = groundUniforms[ "texture1" ].value.wrapT = THREE.RepeatWrapping;
+			groundUniforms[ "texture2" ].value.wrapS = groundUniforms[ "texture2" ].value.wrapT = THREE.RepeatWrapping;
+
+			var material = new THREE.ShaderMaterial( {
+
+				uniforms: groundUniforms,
+				vertexShader: document.getElementById( 'vertexShader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+
+			} );
+			ground = new THREE.Mesh( new THREE.PlaneBufferGeometry(1000, 1000), material );
+			ground.rotation.set(Math.PI / -2, 0, 0);
+			scene.add(ground);
+
+			groundRender = new THREE.WebGLRenderer( { antialias: true } );
+			groundRender.setPixelRatio( window.devicePixelRatio );
+			container.appendChild( groundRender.domElement );
+			groundRender.autoClear = false;
+
+
+			//
+
+			var renderModel = new RenderPass( scene, camera );
+			var effectBloom = new BloomPass( 1.25 );
+			var effectFilm = new FilmPass( 0.35, 0.95, 2048, false );
+
+			groundComposer = new EffectComposer( groundRender );
+
+			groundComposer.addPass( renderModel );
+			groundComposer.addPass( effectBloom );
+			groundComposer.addPass( effectFilm );
+			}
+
+			function initForest() {
+                var fbxLoader = new FBXLoader();
+
+                fbxLoader.load( 'models/obj/tree/Tree.fbx', function (object) {
+                    for ( var i = 0; i < 100; i ++ ) {
+                        var tree = object.clone();
+                        tree.scale.setScalar(Math.random()*3);
+                        tree.position.x = Math.random()*100 - 50;
+                        tree.position.y = Math.random()-0.5;
+                        tree.position.z = Math.random()*100 - 50;
+                        scene.add( tree );
+                    }
+                }, undefined, function ( e ) {
+
+                    console.error( e );
+
+                } );
+			}
+
+			function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                render();
+                renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function dragonAnimate(){
+                requestAnimationFrame( dragonAnimate );
+                update();
+                render();
+			}
+
+			function othersAnimate() {
+
+                requestAnimationFrame( othersAnimate );
+				var doughnutDelta = 100 * clock.getDelta();
+				doughnutUniforms[ "time" ].value += 0.2 * doughnutDelta;
+				doughnut.rotation.y += 0.0125 * doughnutDelta;
+				doughnut.rotation.x += 0.05 * doughnutDelta;
+				doughnutRender.clear();
+				doughnutComposer.render( 0.01 );
+
+				var ballDelta = 100 * clock.getDelta();
+				ballUniforms[ "time" ].value += 0.2 * ballDelta;
+				ball.rotation.y += 0.0125 * ballDelta;
+				ball.rotation.x += 0.05 * ballDelta;
+				ballRender.clear();
+				ballComposer.render( 0.01 );
+
+				// var groundDelta = 100 * clock.getDelta();
+				// groundUniforms[ "time" ].value += 0.5 * groundDelta;
+				// groundRender.clear();
+				// groundComposer.render( 0.01 );
+			}
+
+			function update() {
+                var delta = 5 * clock.getDelta();
+                mixer.update( delta );
+                controls.update( delta );
+                stats.update();
+			}
+
+			function render() {
+			    renderer.render( scene, camera );
+			}
+
+			function draw() {
+				initScene();
+				initCamera();
+				initSky();
+				initLight();
+				initControl();
+				initDoughnut();
+				initGround();
+				initForest();
+				initBall();
+				initDragon();
+				othersAnimate();
+				window.onresize = onWindowResize;
+			}
+
+            draw();
+
+		</script>
+
+	</body>
+
+</html>

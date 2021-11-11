@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+    <style type="text/css">
+        body, html, #all {width: 100%;height: 100%;overflow: hidden;margin: 0;}
+        #header{background-color: black;color: white;text-align: center;padding:2px;}
+        #box{position:relative;width:100%;height:559px;}
+        .ctrl{position:absolute;left:50px;top:100px; width: 800px; height: 512px}
+        .canvas{position:absolute;right: 200px; top: 50px; width: 512px; height: 512px}
+        #footer{background-color: black;color: white;text-align: center;padding:5px;position: absolute;width: 100%;bottom: 0;}
+    </style>
+
+    <title>Pigggggggggggggggggggggggggy</title>
+    <script id="vertex-shader" type="x-shader/x-vertex">
+
+        attribute  vec4 vPosition;
+        uniform mat4 cmt;
+
+        attribute vec4 vNormal;
+
+        varying vec4 fColor;
+
+        uniform vec4 ambientProduct_0, diffuseProduct_0, specularProduct_0;
+        uniform float shininess_0;
+        uniform vec4 ambientProduct_1, diffuseProduct_1, specularProduct_1;
+        uniform float shininess_1;
+        uniform vec4 ambientProduct_2, diffuseProduct_2, specularProduct_2;
+        uniform float shininess_2;
+
+        uniform mat4 modelViewMatrix;
+        uniform vec4 lightPosition;
+        uniform vec3 eyePosition;
+
+        attribute vec2 a_texcoord;
+        varying vec2 v_texcoord;
+
+        void main() {
+            vec3 L;
+            if(lightPosition.w == 0.0)  L = normalize(lightPosition.xyz);
+            else  L = normalize((lightPosition - vPosition) .xyz);
+
+            vec3 E = normalize(eyePosition);
+            vec3 H = normalize(L + E);
+
+            // Transform vertex normal into eye coordinates
+            vec3 N = normalize(vNormal.xyz);
+
+            vec4 ambient_0 = ambientProduct_0;
+            vec4 ambient_1 = ambientProduct_1;
+            vec4 ambient_2 = ambientProduct_2;
+
+            // Compute terms in the illumination equation
+            float Kd = max(dot(L, N), 0.0);
+            vec4 diffuse_0 = Kd * diffuseProduct_0;
+            vec4 diffuse_1 = Kd * diffuseProduct_1;
+            vec4 diffuse_2 = Kd * diffuseProduct_2;
+
+            float Ks_0 = pow(max(dot(N, H), 0.0), shininess_0);
+            vec4 specular_0 = Ks_0 * specularProduct_0;
+            if(dot(L, N) < 0.0 ) specular_0 = vec4(0.0, 0.0, 0.0, 1.0);
+
+            float Ks_1 = pow(max(dot(N, H), 0.0), shininess_1);
+            vec4 specular_1 = Ks_1 * specularProduct_1;
+            if(dot(L, N) < 0.0 ) specular_1 = vec4(0.0, 0.0, 0.0, 1.0);
+
+            float Ks_2 = pow(max(dot(N, H), 0.0), shininess_2);
+            vec4 specular_2 = Ks_2 * specularProduct_2;
+            if(dot(L, N) < 0.0 ) specular_2 = vec4(0.0, 0.0, 0.0, 1.0);
+
+            gl_Position =  modelViewMatrix * cmt * vPosition;
+
+            // set fcolor
+            if(vPosition.z <= -0.45)
+            fColor = ambient_0 + diffuse_0 + specular_0;   // ears
+            else if(vPosition.z < 0.3)
+            fColor = ambient_1 + diffuse_1 + specular_1;   // body
+            else
+            fColor = ambient_2 + diffuse_2 + specular_2;   // floor
+
+            // Pass the texcoord to the fragment shader.
+            v_texcoord = a_texcoord;
+        }
+    </script>
+    <script id="fragment-shader" type="x-shader/x-fragment">
+
+        precision mediump float;
+
+        varying vec4 fColor;
+
+        // Passed in from the vertex shader.
+        varying vec2 v_texcoord;
+
+        // The texture.
+        uniform sampler2D u_texture;
+
+        void main() {
+            gl_FragColor = fColor * texture2D(u_texture, v_texcoord);
+        }
+    </script>
+    <script type="text/javascript" src="../Common/webgl-utils.js"></script>
+    <script type="text/javascript" src="../Common/initShaders.js"></script>
+    <script type="text/javascript" src="../Common/MV.js"></script>
+    <script type="text/javascript" src="texture.js"></script>
+</head>
+
+<body>
+<div id="header">
+    <h1>An ugly Pig in a texture field!</h1>
+</div>
+<div id="box">
+    <div class="ctrl">
+        <div>
+            <button id="btn_clear">Clear</button>
+            translate
+            <button id="moveForward">forward</button>
+            <button id="moveBackward">backward</button>
+            <button id="moveRight">right</button>
+            <button id="moveLeft">left</button>
+            <button id="moveUp">up</button>
+            <button id="moveDown">down</button>
+        </div>
+        <div>
+            size 0.25 <input id="slider" type="range" min="0" max="100" step="1" value="25" />1.5
+            enlarge : <input type="text" value="1" style="width:50px; height:20px;" id="text_figure_size"/>
+        </div>
+        <div>
+            refresh gap 0ms <input id="speed_slider" type="range" min="0" max="100" step="1" value="50" />100ms
+        </div>
+        <div>
+            rotate angle : <input type="text" value="0" style="width:25px; height:20px;" id="rotate_angle"/>&nbsp
+            rotate axis :
+            <input type="text" value="0" style="width:25px; height:20px;" id="rotate_axisX"/>&nbsp
+            <input type="text" value="0" style="width:25px; height:20px;" id="rotate_axisY"/>&nbsp
+            <input type="text" value="0" style="width:25px; height:20px;" id="rotate_axisZ"/>&nbsp
+            fiexed point :
+            <input type="text" value="0" style="width:25px; height:20px;" id="fixed_pointX"/>&nbsp
+            <input type="text" value="0" style="width:25px; height:20px;" id="fixed_pointY"/>&nbsp
+            <input type="text" value="0" style="width:25px; height:20px;" id="fixed_pointZ"/>&nbsp
+            <button id="btn_myRotate">OK</button>
+            <input type="radio" id="auto_myRotate"/>auto
+        </div>
+        <div>
+            <text>screen rotate</text>
+        </div>
+        <div>
+            x -180<input id="rotate_screen_X" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_screen_X"/>
+            <button id="reset_rotate_screen_X">Reset</button>
+            <input type="radio" id="radio_auto_rotate_screen_X"/>auto+1
+        </div>
+        <div>
+            y -180<input id="rotate_screen_Y" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_screen_Y"/>
+            <button id="reset_rotate_screen_Y">Reset</button>
+            <input type="radio" id="radio_auto_rotate_screen_Y"/>auto+1
+        </div>
+        <div>
+            z -180<input id="rotate_screen_Z" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_screen_Z"/>
+            <button id="reset_rotate_screen_Z">Reset</button>
+            <input type="radio" id="radio_auto_rotate_screen_Z"/>auto+1
+        </div>
+        <div>
+            <text>object rotate</text><input type="radio" id="virtual_ball"/>virtual ball mode
+        </div>
+        <div>
+            x -180<input id="rotate_object_X" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_object_X"/>
+            <button id="reset_rotate_object_X">Reset</button>
+            <input type="radio" id="radio_auto_rotate_object_X"/>auto+1
+        </div>
+        <div>
+            y -180<input id="rotate_object_Y" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_object_Y"/>
+            <button id="reset_rotate_object_Y">Reset</button>
+            <input type="radio" id="radio_auto_rotate_object_Y"/>auto+1
+        </div>
+        <div>
+            z -180<input id="rotate_object_Z" type="range" min="0" max="3600" step="1" value="1800" />180
+            total angle : <input type="text" value="0" style="width:50px; height:20px;" id="text_rotate_object_Z"/>
+            <button id="reset_rotate_object_Z">Reset</button>
+            <input type="radio" id="radio_auto_rotate_object_Z"/>auto+1
+        </div>
+        <div>
+            light position : &nbsp
+            X:<input type="text" value="1" style="width:25px; height:20px;" id="light_positionX"/>&nbsp
+            Y:<input type="text" value="1" style="width:25px; height:20px;" id="light_positionY"/>&nbsp
+            Z:<input type="text" value="1" style="width:25px; height:20px;" id="light_positionZ"/>&nbsp
+            <button id="btn_light_position">set</button>
+            <input type="radio" id="point_source"/>point source
+        </div>
+        <div>
+            <button id="btn_light_rotateX">rotateX</button>
+            <input type="radio" id="radio_light_rotateX" />auto &nbsp &nbsp
+            <button id="btn_light_rotateY">rotateY</button>
+            <input type="radio" id="radio_light_rotateY" />auto &nbsp &nbsp
+            <button id="btn_light_rotateZ">rotateZ</button>
+            <input type="radio" id="radio_light_rotateZ" />auto
+        </div>
+        <div>
+            eye position : &nbsp
+            X:<input type="text" value="0.15" style="width:40px; height:20px;" id="eye_positionX"/>&nbsp
+            Y:<input type="text" value="0.15" style="width:40px; height:20px;" id="eye_positionY"/>&nbsp
+            Z:<input type="text" value="0.15" style="width:40px; height:20px;" id="eye_positionZ"/>&nbsp
+            <button id="btn_eye_position">set</button>
+        </div>
+        <div>
+            ears_material : &nbsp
+            <select id = "ears_material">
+              <option value="0" selected = "selected">Pig Pink</option>
+              <option value="1">silver</option>
+              <option value="2">rubber</option>
+            </select>
+            &nbsp &nbsp body_material : &nbsp
+            <select id = "body_material">
+              <option value="0">Pig Pink</option>
+              <option value="1" selected = "selected">silver</option>
+              <option value="2">rubber</option>
+            </select>
+            &nbsp &nbsp floor_material : &nbsp
+            <select id = "floor_material">
+              <option value="0">Pig Pink</option>
+              <option value="1">silver</option>
+              <option value="2" selected = "selected" >rubber</option>
+            </select>
+        </div>
+        <div>
+            texture : &nbsp;
+            <label for="texture"></label><select id = "texture">
+                <option value="0" selected = "selected">Water</option>
+                <option value="1">Mist</option>
+                <option value="2">Blue</option>
+                <option value="3">Galaxy</option>
+                <option value="4">Golden</option>
+            </select>
+        </div>
+    </div>
+    <div class="canvas">
+    <canvas id="gl-canvas" width="512" height="512" >
+    Oops ... your browser doesn't support the HTML5 canvas element
+    </canvas>
+    </div>
+</div>
+<img id="WaterImage" src="resources/water.jpg" hidden alt="Water">
+<img id="MistImage" src="resources/mist.jpg" hidden alt="Mist">
+<img id="BlueImage" src="resources/blue.jpg" hidden alt="Blue">
+<img id="GalaxyImage" src="resources/galaxy.jpg" hidden alt="Galaxy">
+<img id="GoldenImage" src="resources/golden.jpg" hidden alt="Golden">
+<div id="footer">
+    @Piggy texture：周子易 刘晓臻 陈月瑶
+</div>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+<style type="text/css">
+    body, html,#all {width: 100%;height: 100%;overflow: hidden;margin: 0;font-family: "微软雅黑";}
+    #header{background-color: black;color: white;text-align: center;padding:2px;}
+    #sp{width: 100%; background-color: #eeeeee;padding: 8px;text-align: center;}
+    #box{position:relative;width:100%;height:559px;}
+    .ctrl{position:absolute;left:100px;top:100px; width: 200px; height: 200px}
+    .notes{position:absolute;left:100px;top:300px; width: 200px; height: 200px}
+    .canvas{position:absolute;right: 350px; top: 10px; width: 512px;hight: 512px}
+    #footer{background-color: black;color: white;text-align: center;padding:5px;position: absolute;width: 100%;bottom: 0;}
+</style>
+
+<title>Beeeeeeeeeeeeeeeeeeeeeeeeee</title>
+
+<script id="vertex-shader" type="x-shader/x-vertex">//顶点着色器
+attribute vec4 vPosition;
+uniform float right;
+uniform float up;
+
+void main()
+{
+    gl_Position.x = vPosition.x + right;
+	gl_Position.y = vPosition.y + up;
+    gl_Position.z = 0.0;
+    gl_Position.w = 1.0;
+    gl_PointSize = 15.0;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">//片元着色器
+
+precision mediump float;
+uniform vec4 fcolor;
+
+void main()
+{
+    gl_FragColor = fcolor;
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="Bee.js"></script>
+</head>
+
+<body>
+
+<div id="header">
+    <h1>一只小蜜蜂啊！飞在花丛中啊！</h1>
+</div>
+
+<div id="sp">
+    飞行速度 0% <input id="slider" type="range" min="0" max="100" step="10" value="40" /> 100%
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    翅膀振幅 0% <input id="slider_theta" type="range" min="0" max="100" step="10" value="50" /> 100%
+</div>
+
+<div id="box">
+    <div class="notes">
+        快捷键说明：<br>
+        A-向左飞<br>
+        D-向右飞<br>
+        W-向上飞<br>
+        S-向下飞<br>
+        K-停止飞行/继续飞行<br>
+        F-花丛出现/消失
+    </div>
+
+    <div class="ctrl">
+        <select id="Controls" size="7">
+            <option value="0">狂 喜 乱 舞</option>
+            <option value="1">停止</option>
+            <option value="2">停在花上</option>
+            <option value="3">向右飞</option>
+            <option value="4">向左飞</option>
+            <option value="5">向上飞</option>
+            <option value="6">向下飞</option>
+        </select>
+    </div>
+
+    <div class="canvas">
+        <canvas id="gl-canvas" width="512" height="512">
+            Oops ... your browser doesn't support the HTML5 canvas element
+        </canvas>
+    </div>
+</div>
+
+<div id="footer">
+    @我们只是小蜜蜂啊：周子易 刘晓臻 陈月瑶
+</div>
+
+</body>
+</html>
